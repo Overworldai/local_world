@@ -56,4 +56,12 @@ RunProgram="LocalWorld.cmd"
           cmd /c "copy /b `"$sfx`"+config.txt+payload.7z LocalWorld.exe" | Out-Host
 
           Write-Host "Stage contents:"
-          Get-Chi
+          Get-ChildItem -Force | Format-Table -AutoSize
+
+          Pop-Location
+
+      - name: Upload exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: LocalWorld
+          path: dist/stage/LocalWorld.exe
