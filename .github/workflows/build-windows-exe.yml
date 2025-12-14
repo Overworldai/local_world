@@ -38,7 +38,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist\stage | Out-Null
           Copy-Item environment.ps1 dist\stage\
-          Copy-Item packaging\RunFoo.cmd dist\stage\
+          Copy-Item packaging\LocalWorld.cmd dist\stage\
           Copy-Item (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName dist\stage\app.whl
 
       - name: Build single EXE with IExpress
