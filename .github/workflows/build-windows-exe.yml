@@ -46,7 +46,7 @@ jobs:
         run: |
           $stage = (Resolve-Path dist\stage).Path
           $sed   = Join-Path $stage "foo.sed"
-          $out   = Join-Path $stage "FooPortable-cu128.exe"
+          $out   = Join-Path $stage "LocalWorld-cu128.exe"
 
           @"
           [Version]
@@ -62,18 +62,24 @@ jobs:
           InstallPrompt=
           DisplayLicense=
           FinishMessage=
-          FriendlyName=Foo Portable (cu128)
+          FriendlyName=LocalWorld (cu128)
           TargetName=$out
-          AppLaunched=cmd.exe /c RunFoo.cmd
+          AppLaunched=cmd.exe /c LocalWorld.cmd
           SourceFiles=SourceFiles
 
           [SourceFiles]
           SourceFiles0=$stage
 
           [SourceFiles0]
-          RunFoo.cmd
+          LocalWorld.cmd
           environment.ps1
           app.whl
           "@ | Set-Content -Encoding ASCII $sed
 
           & "$env:WINDIR\System32\IExpress.exe" /N $sed
+
+      - name: Upload exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: LocalWorld
+          path: dist/stage/LocalWorld.exe

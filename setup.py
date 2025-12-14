@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name="foo",
+    name="LocalWorld",
     version="0.1.0",
     py_modules=["client"],
     package_dir={"": "src"},
