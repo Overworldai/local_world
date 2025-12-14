@@ -46,12 +46,13 @@ jobs:
 
           & $sevenZip a -t7z payload.7z * | Out-Host
 
-          @"
-;!@Install@!UTF-8!
-Title="LocalWorld"
-RunProgram="LocalWorld.cmd"
-;!@InstallEnd@!
-"@ | Set-Content -Encoding utf8 config.txt
+          $cfg = @(
+            ';!@Install@!UTF-8!'
+            'Title="LocalWorld"'
+            'RunProgram="LocalWorld.cmd"'
+            ';!@InstallEnd@!'
+          )
+          $cfg | Set-Content -Encoding utf8NoBOM config.txt
 
           cmd /c "copy /b `"$sfx`"+config.txt+payload.7z LocalWorld.exe" | Out-Host
 
