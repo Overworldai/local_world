@@ -1,0 +1,21 @@
+[workspace]
+name = "foo-portable"
+channels = ["conda-forge"]
+platforms = ["win-64"]
+
+[dependencies]
+python = "3.10.*"
+pip = "*"
+
+[pypi-options]
+no-build = true
+
+[pypi-dependencies]
+torch = { version = "==2.9.0", index = "https://download.pytorch.org/whl/cu128" }
+torchvision = { version = "==0.24.0", index = "https://download.pytorch.org/whl/cu128" }
+torchaudio = { version = "==2.9.0", index = "https://download.pytorch.org/whl/cu128" }
+
+torchao = "*"
+xformers = "*"
+numpy = "*"
+opencv-python = "*"
