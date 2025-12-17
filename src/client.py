@@ -74,9 +74,9 @@ def load_seed_frame(target_size: tuple[int, int] = (360, 640)) -> torch.Tensor |
 
 async def ctrl_stream(restart_event: asyncio.Event, mouse_sensitivity: float = 1.5,) -> AsyncIterator[CtrlInput]:
     codes = (
-        {("k", pygame.key.key_code(ch)): ord(ch.upper()) for ch in "wasd"} |
+        {("k", pygame.key.key_code(ch)): ord(ch.upper()) for ch in "wasdr"} |  # optionally "f"
         {("k", pygame.K_SPACE): ord(" ")} |
-        {("k", pygame.K_LSHIFT): 0xA0, ("k", pygame.K_RSHIFT): 0xA0} |
+        {("k", pygame.K_LSHIFT): 0x10, ("k", pygame.K_RSHIFT): 0x10} |
         {("m", 1): 0x01, ("m", 2): 0x04, ("m", 3): 0x02}
     )
 
