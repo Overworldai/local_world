@@ -2,7 +2,8 @@ from typing import AsyncIterable, AsyncIterator
 
 import asyncio
 import functools
-import sys
+import os
+import urllib.request
 
 import pygame
 import torch
@@ -12,30 +13,63 @@ import torchvision
 from world_engine import WorldEngine, CtrlInput
 
 
-MODEL_URI = "OpenWorldLabs/CoD-V3-30K-SF"
-MAX_FRAMES = 4096
-MOUSE_SENSITIVITY = 1.5
+def fetch_model_uris(*, owner: str = "OpenWorldLabs", collection: str = "cod-nightly") -> list[str]:
+    """Models from https://huggingface.co/collections/OpenWorldLabs/cod-nightly, reverse-lex."""
+    from huggingface_hub import get_collection
+
+    coll = get_collection(f"{owner}/{collection}")
+    models = [
+        it.item_id
+        for it in getattr(coll, "items", [])
+        if getattr(it, "item_type", None) == "model"
+    ]
+    if not models:
+        raise RuntimeError(f"No models found in Hugging Face collection {owner}/{collection}")
+    return sorted(models, reverse=True)
+
+
+def launch_form(*, title: str = "World Engine") -> str | None:
+    import tkinter as tk
+    from tkinter import ttk
+
+    models = fetch_model_uris()  # must come from collection; raises if unavailable
+
+    root = tk.Tk()
+    root.title(title)
+    root.resizable(False, False)
+
+    frm = ttk.Frame(root, padding=12)
+    frm.grid(sticky="nsew")
+    frm.columnconfigure(1, weight=1)
+
+    ttk.Label(frm, text="Model").grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
+
+    var = tk.StringVar(value=models[0])
+    cmb = ttk.Combobox(frm, textvariable=var, values=models, state="readonly", width=52)
+    cmb.grid(row=0, column=1, sticky="ew", pady=(0, 8))
+    cmb.focus_set()
+
+    selected: dict[str, str | None] = {"uri": None}
+
+    def run() -> None:
+        selected["uri"] = var.get()
+        root.destroy()
+
+    ttk.Button(frm, text="Run", command=run).grid(row=1, column=1, sticky="e")
+
+    root.mainloop()
+    return selected["uri"]
 
 
 @functools.lru_cache
-def load_seed_frame(
-    target_size: tuple[int, int] = (360, 640),
-    device: str = "cuda",
-) -> torch.Tensor | None:
-    """Cached seed frame as (H,W,3) uint8 on GPU, or None if unavailable."""
-    import urllib.request
-
+def load_seed_frame(target_size: tuple[int, int] = (360, 640)) -> torch.Tensor | None:
+    """Cached seed frame as (H,W,3) uint8 on GPU"""
     url = "https://gist.github.com/user-attachments/assets/5d91c49a-2ae9-418f-99c0-e93ae387e1de"
     urllib.request.urlretrieve(url, "img.png")
-
     img = torchvision.io.read_image("img.png")  # torch.uint8, shape (C,H,W)
-    if img is None or img.numel() == 0:
-        return None
-
-    img = img[:3]  # ensure RGB (drop alpha if present)
-    frame = img.unsqueeze(0).float()  # (1,3,H,W)
-    frame = F.interpolate(frame, size=target_size, mode="bilinear", align_corners=False)[0]
-    return frame.to(device=device, dtype=torch.uint8).permute(1, 2, 0)  # (H,W,3)
+    img = img[:3].unsqueeze(0).float()  # (1,3,H,W)
+    frame = F.interpolate(img, size=target_size, mode="bilinear", align_corners=False)[0]  # (3,H,W)
+    return frame.to(dtype=torch.uint8).permute(1, 2, 0)  # (H,W,3)
 
 
 async def render(frames: AsyncIterable[torch.Tensor]) -> None:
@@ -43,7 +77,8 @@ async def render(frames: AsyncIterable[torch.Tensor]) -> None:
     screen = pygame.display.set_mode((1920, 1080), pygame.RESIZABLE)
     pygame.event.set_grab(True)
     pygame.mouse.set_visible(False)
-    pygame.display.set_caption("Y=new seed, U=restart, ESC=exit")
+    pygame.mouse.get_rel()
+    pygame.display.set_caption("U=restart, ESC=menu")
 
     async for t in frames:
         img = t.detach()
@@ -58,6 +93,7 @@ async def render(frames: AsyncIterable[torch.Tensor]) -> None:
         pygame.display.flip()
         await asyncio.sleep(0)
 
+    pygame.event.set_grab(False)
     pygame.quit()
 
 
@@ -65,7 +101,8 @@ async def frame_stream(
     engine: WorldEngine,
     ctrls: AsyncIterable[CtrlInput],
     seed: torch.Tensor | None,
-    max_frames: int = MAX_FRAMES - 2,
+    *,
+    max_frames: int,
 ) -> AsyncIterator[torch.Tensor]:
     current_seed = seed
     n = 0
@@ -84,21 +121,12 @@ async def frame_stream(
     async for ctrl in ctrls:
         cmd = getattr(ctrl, "reset_command", None)
 
-        # Y/U: reset and immediately yield a frame with NO ctrl applied
-        if cmd == "new_seed":
-            current_seed = await asyncio.to_thread(load_seed_frame)
-            await reset_with_seed()
-            yield await asyncio.to_thread(engine.gen_frame)
-            n = 1
-            continue
-
         if cmd == "restart_seed":
             await reset_with_seed()
             yield await asyncio.to_thread(engine.gen_frame)
             n = 1
             continue
 
-        # Periodic reset: reset context but still apply the current ctrl on the next gen_frame
         if n >= max_frames:
             await reset_with_seed()
             n = 0
@@ -107,14 +135,15 @@ async def frame_stream(
         n += 1
 
 
-async def ctrl_stream(*, dtype: torch.dtype, device: str = "cuda") -> AsyncIterator[CtrlInput]:
-    # Mouse button bitmasks (kept as-is for engine compatibility)
-    MOUSE_MAP = {1: 0x01, 2: 0x04, 3: 0x02}  # LMB, MMB, RMB
-    SHIFT_CODE = 0xA0  # VK_LSHIFT
-
-    CMD_BY_KEY = {pygame.K_y: "new_seed", pygame.K_u: "restart_seed"}
-
-    # Hardcoded legal keys -> engine button codes
+async def ctrl_stream(
+    *,
+    dtype: torch.dtype,
+    device: str = "cuda",
+    mouse_sensitivity: float = 1.5,
+) -> AsyncIterator[CtrlInput]:
+    MOUSE_MAP = {1: 0x01, 2: 0x04, 3: 0x02}
+    SHIFT_CODE = 0xA0
+    CMD_BY_KEY = {pygame.K_u: "restart_seed"}  # Y does nothing now
     LEGAL_KEYS = {
         pygame.K_w: ord("W"),
         pygame.K_a: ord("A"),
@@ -123,22 +152,16 @@ async def ctrl_stream(*, dtype: torch.dtype, device: str = "cuda") -> AsyncItera
         pygame.K_SPACE: ord(" "),
     }
 
-
     while True:
         reset_command = None
 
-        # Only consume events needed for edge-trigger actions / quit
         for ev in pygame.event.get((pygame.QUIT, pygame.KEYDOWN)):
-            if ev.type == pygame.QUIT:
-                return
-            if ev.key == pygame.K_ESCAPE:
+            if ev.type == pygame.QUIT or ev.key == pygame.K_ESCAPE:
                 return
             reset_command = CMD_BY_KEY.get(ev.key) or reset_command
 
-        # Snapshot current held state (no bookkeeping)
         pressed = pygame.key.get_pressed()
         buttons: set[int] = {code for k, code in LEGAL_KEYS.items() if pressed[k]}
-
         if pressed[pygame.K_LSHIFT] or pressed[pygame.K_RSHIFT]:
             buttons.add(SHIFT_CODE)
 
@@ -151,7 +174,7 @@ async def ctrl_stream(*, dtype: torch.dtype, device: str = "cuda") -> AsyncItera
             buttons.add(MOUSE_MAP[3])
 
         dx, dy = pygame.mouse.get_rel()
-        mouse = torch.tensor([dx, dy], dtype=dtype, device=device) * MOUSE_SENSITIVITY
+        mouse = torch.tensor([dx, dy], dtype=dtype, device=device) * mouse_sensitivity
 
         ctrl = CtrlInput(button=buttons, mouse=mouse)
         ctrl.reset_command = reset_command
@@ -160,23 +183,45 @@ async def ctrl_stream(*, dtype: torch.dtype, device: str = "cuda") -> AsyncItera
         await asyncio.sleep(0)
 
 
-async def main() -> None:
-    uri = sys.argv[1] if len(sys.argv) > 1 else MODEL_URI
-
+async def main(
+    *,
+    model_uri: str,
+    n_frames: int = 4096,
+    device: str = "cuda",
+) -> None:
     seed = await asyncio.to_thread(load_seed_frame)
 
     engine = WorldEngine(
-        uri,
-        device="cuda",
-        model_config_overrides={"n_frames": MAX_FRAMES},
+        model_uri,
+        device=device,
+        model_config_overrides={"n_frames": n_frames},
         apply_patches=True,
         quant=None,
     )
 
-    ctrls = ctrl_stream(dtype=engine.dtype, device="cuda")
-    frames = frame_stream(engine, ctrls, seed)
+    ctrls = ctrl_stream(dtype=engine.dtype, device=device)
+    frames = frame_stream(engine, ctrls, seed, max_frames=n_frames - 2)
     await render(frames)
 
 
+def ensure_hf_token() -> None:
+    if os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN"):
+        return
+    import tkinter as tk
+    from tkinter import simpledialog
+    r = tk.Tk()
+    r.withdraw()
+    t = simpledialog.askstring("HF token", "Enter Hugging Face token:", show="*")
+    r.destroy()
+    if not t:
+        raise SystemExit("No Hugging Face token provided.")
+    os.environ["HF_TOKEN"] = os.environ["HUGGINGFACE_HUB_TOKEN"] = t
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    ensure_hf_token()
+    while True:
+        uri = launch_form()
+        if not uri:
+            break
+        asyncio.run(main(model_uri=uri))
