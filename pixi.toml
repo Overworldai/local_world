@@ -19,6 +19,7 @@ index-strategy = "unsafe-best-match"
 [pypi-dependencies]
 world_engine = { git = "https://github.com/Wayfarer-Labs/world_engine.git" }
 pygame = "*"
+huggingface_hub = { version = "*", extras = ["hf_xet"] }
 
 [tasks]
 client = "python src/client.py"
