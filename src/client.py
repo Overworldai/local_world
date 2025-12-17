@@ -1,4 +1,4 @@
-from typing import AsyncIterable, AsyncIterator
+from typing import AsyncIterator
 
 import asyncio
 import functools
@@ -69,10 +69,52 @@ def load_seed_frame(target_size: tuple[int, int] = (360, 640)) -> torch.Tensor |
     img = torchvision.io.read_image("img.png")  # torch.uint8, shape (C,H,W)
     img = img[:3].unsqueeze(0).float()  # (1,3,H,W)
     frame = F.interpolate(img, size=target_size, mode="bilinear", align_corners=False)[0]  # (3,H,W)
-    return frame.to(dtype=torch.uint8).permute(1, 2, 0)  # (H,W,3)
+    return frame.to(dtype=torch.uint8).permute(1, 2, 0).contiguous()  # (H,W,3)
 
 
-async def render(frames: AsyncIterable[torch.Tensor]) -> None:
+async def ctrl_stream(restart_event: asyncio.Event, mouse_sensitivity: float = 1.5,) -> AsyncIterator[CtrlInput]:
+    codes = (
+        {("k", pygame.key.key_code(ch)): ord(ch.upper()) for ch in "wasd"} |
+        {("k", pygame.K_SPACE): ord(" ")} |
+        {("k", pygame.K_LSHIFT): 0xA0, ("k", pygame.K_RSHIFT): 0xA0} |
+        {("m", 1): 0x01, ("m", 2): 0x04, ("m", 3): 0x02}
+    )
+
+    while True:
+        btn: set[int] = set()
+
+        for e in pygame.event.get():  # edge presses + drain
+            if e.type == pygame.QUIT:
+                return
+            if e.type == pygame.KEYDOWN:
+                if e.key == pygame.K_ESCAPE:
+                    return
+                if e.key == pygame.K_u:
+                    restart_event.set()
+                if (c := codes.get(("k", e.key))) is not None:
+                    btn.add(c)
+            elif e.type == pygame.MOUSEBUTTONDOWN:
+                if (c := codes.get(("m", e.button))) is not None:
+                    btn.add(c)
+
+        pressed = pygame.key.get_pressed()
+        btn.update(c for (kind, raw), c in codes.items() if kind == "k" and pressed[raw])
+
+        mb = pygame.mouse.get_pressed(3)
+        btn.update(codes[("m", i)] for i, down in enumerate(mb, 1) if down)
+
+        dx, dy = pygame.mouse.get_rel()
+        yield CtrlInput(button=btn, mouse=(dx * mouse_sensitivity, dy * mouse_sensitivity))
+        await asyncio.sleep(0)
+
+
+async def run_loop(
+    *,
+    engine: WorldEngine,
+    seed: torch.Tensor | None,
+    n_frames: int,
+    mouse_sensitivity: float = 1.5,
+) -> None:
     pygame.init()
     screen = pygame.display.set_mode((1920, 1080), pygame.RESIZABLE)
     pygame.event.set_grab(True)
@@ -80,107 +122,45 @@ async def render(frames: AsyncIterable[torch.Tensor]) -> None:
     pygame.mouse.get_rel()
     pygame.display.set_caption("U=restart, ESC=menu")
 
-    async for t in frames:
-        img = t.detach()
+    restart = asyncio.Event()
+    ctrls = ctrl_stream(restart_event=restart, mouse_sensitivity=mouse_sensitivity)
+    limit = max(1, n_frames - 2)
+
+    async def reset() -> None:
+        await asyncio.to_thread(engine.reset)
+        if seed is not None:
+            await asyncio.to_thread(engine.append_frame, seed)
+
+    def draw(img: torch.Tensor) -> None:
+        img = img.detach()
         if img.dtype != torch.uint8:
             img = img.clamp(0, 255).to(torch.uint8)
 
         frame = img.cpu().numpy()  # (H,W,3)
         surf = pygame.surfarray.make_surface(frame.swapaxes(0, 1))  # (W,H,3)
         surf = pygame.transform.scale(surf, screen.get_size())
-
         screen.blit(surf, (0, 0))
         pygame.display.flip()
-        await asyncio.sleep(0)
 
-    pygame.event.set_grab(False)
-    pygame.quit()
+    try:
+        if seed is not None:
+            await asyncio.to_thread(engine.append_frame, seed)
 
+        frames = 0
+        async for ctrl in ctrls:
+            if restart.is_set() or frames >= limit:
+                restart.clear()
+                await reset()
+                frames = 0
 
-async def frame_stream(
-    engine: WorldEngine,
-    ctrls: AsyncIterable[CtrlInput],
-    seed: torch.Tensor | None,
-    *,
-    max_frames: int,
-) -> AsyncIterator[torch.Tensor]:
-    current_seed = seed
-    n = 0
+            img = await asyncio.to_thread(engine.gen_frame, ctrl=ctrl)
+            frames += 1
+            draw(img)
 
-    async def reset_with_seed() -> None:
-        await asyncio.to_thread(engine.reset)
-        if current_seed is not None:
-            await asyncio.to_thread(engine.append_frame, current_seed)
-
-    if current_seed is not None:
-        await asyncio.to_thread(engine.append_frame, current_seed)
-
-    yield await asyncio.to_thread(engine.gen_frame)
-    n = 1
-
-    async for ctrl in ctrls:
-        cmd = getattr(ctrl, "reset_command", None)
-
-        if cmd == "restart_seed":
-            await reset_with_seed()
-            yield await asyncio.to_thread(engine.gen_frame)
-            n = 1
-            continue
-
-        if n >= max_frames:
-            await reset_with_seed()
-            n = 0
-
-        yield await asyncio.to_thread(engine.gen_frame, ctrl=ctrl)
-        n += 1
-
-
-async def ctrl_stream(
-    *,
-    dtype: torch.dtype,
-    device: str = "cuda",
-    mouse_sensitivity: float = 1.5,
-) -> AsyncIterator[CtrlInput]:
-    MOUSE_MAP = {1: 0x01, 2: 0x04, 3: 0x02}
-    SHIFT_CODE = 0xA0
-    CMD_BY_KEY = {pygame.K_u: "restart_seed"}  # Y does nothing now
-    LEGAL_KEYS = {
-        pygame.K_w: ord("W"),
-        pygame.K_a: ord("A"),
-        pygame.K_s: ord("S"),
-        pygame.K_d: ord("D"),
-        pygame.K_SPACE: ord(" "),
-    }
-
-    while True:
-        reset_command = None
-
-        for ev in pygame.event.get((pygame.QUIT, pygame.KEYDOWN)):
-            if ev.type == pygame.QUIT or ev.key == pygame.K_ESCAPE:
-                return
-            reset_command = CMD_BY_KEY.get(ev.key) or reset_command
-
-        pressed = pygame.key.get_pressed()
-        buttons: set[int] = {code for k, code in LEGAL_KEYS.items() if pressed[k]}
-        if pressed[pygame.K_LSHIFT] or pressed[pygame.K_RSHIFT]:
-            buttons.add(SHIFT_CODE)
-
-        lmb, mmb, rmb = pygame.mouse.get_pressed(3)
-        if lmb:
-            buttons.add(MOUSE_MAP[1])
-        if mmb:
-            buttons.add(MOUSE_MAP[2])
-        if rmb:
-            buttons.add(MOUSE_MAP[3])
-
-        dx, dy = pygame.mouse.get_rel()
-        mouse = torch.tensor([dx, dy], dtype=dtype, device=device) * mouse_sensitivity
-
-        ctrl = CtrlInput(button=buttons, mouse=mouse)
-        ctrl.reset_command = reset_command
-        yield ctrl
-
-        await asyncio.sleep(0)
+            await asyncio.sleep(0)
+    finally:
+        pygame.event.set_grab(False)
+        pygame.quit()
 
 
 async def main(
@@ -198,10 +178,7 @@ async def main(
         apply_patches=True,
         quant=None,
     )
-
-    ctrls = ctrl_stream(dtype=engine.dtype, device=device)
-    frames = frame_stream(engine, ctrls, seed, max_frames=n_frames - 2)
-    await render(frames)
+    await run_loop(engine=engine, seed=seed, n_frames=n_frames)
 
 
 def ensure_hf_token() -> None:
