@@ -14,6 +14,7 @@ Compression=lzma2
 SolidCompression=yes
 
 [Files]
+Source: "installer\git\*";    DestDir: "{app}\git"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "installer\pixi.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "pixi.toml";          DestDir: "{app}"; Flags: ignoreversion
 Source: "src\*";              DestDir: "{app}\src"; Flags: recursesubdirs createallsubdirs ignoreversion
@@ -22,5 +23,5 @@ Source: "src\*";              DestDir: "{app}\src"; Flags: recursesubdirs create
 Name: "{group}\{#MyAppName}"; Filename: "{app}\pixi.exe"; Parameters: "run client --manifest-path ""{app}\pixi.toml"""; WorkingDir: "{app}"
 
 [Run]
-Filename: "{app}\pixi.exe"; Parameters: "install --manifest-path ""{app}\pixi.toml"""; WorkingDir: "{app}"; Flags: waituntilterminated runhidden; StatusMsg: "Installing Python environment (pixi)…"
+Filename: "{cmd}"; Parameters: "/C ""set PATH={app}\git\cmd;{app}\git\mingw64\bin;%PATH% & """"{app}\pixi.exe"""" install --manifest-path """"{app}\pixi.toml"""""""; WorkingDir: "{app}"; Flags: waituntilterminated runhidden; StatusMsg: "Installing Python environment (pixi)…"
 Filename: "{app}\pixi.exe"; Parameters: "run client --manifest-path ""{app}\pixi.toml"""; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
