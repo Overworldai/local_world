@@ -29,6 +29,14 @@ jobs:
           $pixiPath = (Get-Command pixi).Source
           Copy-Item $pixiPath -Destination installer/pixi.exe -Force
 
+      - name: Copy Git into installer payload
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force installer\git | Out-Null
+          $gitExe  = (Get-Command git).Source              # ...\Git\cmd\git.exe
+          $gitRoot = Split-Path (Split-Path $gitExe -Parent) -Parent  # ...\Git
+          Copy-Item "$gitRoot\*" -Destination installer\git -Recurse -Force
+
       - name: Compile Inno Setup installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.7
         with:
