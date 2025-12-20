@@ -1,0 +1,125 @@
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+:root {
+  font-family: 'Segoe UI', 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 400;
+  color: #f0f0f0;
+  background-color: transparent;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
+/* ============================================
+   CONTENT STYLES
+   ============================================ */
+
+.content-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+}
+
+.logo {
+  height: 5em;
+  padding: 1em;
+  will-change: filter;
+  transition: filter 0.3s;
+}
+
+.logo.tauri:hover {
+  filter: drop-shadow(0 0 2em #24c8db);
+}
+
+.logo.vanilla:hover {
+  filter: drop-shadow(0 0 2em #ffe21c);
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+h1 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  color: #fff;
+}
+
+p {
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0.5rem 0;
+}
+
+a {
+  color: #24c8db;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #6ee7ef;
+}
+
+input, button {
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5em 1em;
+  font-size: 1em;
+  font-family: inherit;
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+input:focus {
+  outline: none;
+  border-color: rgba(0, 255, 255, 0.4);
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.2);
+}
+
+button {
+  cursor: pointer;
+  background: rgba(0, 255, 255, 0.1);
+  border-color: rgba(0, 255, 255, 0.3);
+}
+
+button:hover {
+  background: rgba(0, 255, 255, 0.2);
+  border-color: rgba(0, 255, 255, 0.5);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.3);
+}
+
+#greet-input {
+  margin-right: 0.5rem;
+}
+
+#greet-form {
+  margin-top: 1rem;
+}

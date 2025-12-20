@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/holo-frame.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>world-client</title>
+    <script type="module" src="/main.js" defer></script>
+  </head>
+
+  <body>
+    <div class="holo-frame">
+      <!-- Custom Titlebar -->
+      <div class="titlebar">
+        <div class="titlebar-drag" data-tauri-drag-region></div>
+        <div class="titlebar-title">WORLD CLIENT</div>
+        <div class="titlebar-controls">
+          <button id="titlebar-minimize" class="titlebar-btn">
+            <svg viewBox="0 0 10 10"><path d="M2 5h6" stroke="currentColor" stroke-width="1.2"/></svg>
+          </button>
+          <button id="titlebar-maximize" class="titlebar-btn">
+            <svg viewBox="0 0 10 10"><rect x="2" y="2" width="6" height="6" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+          </button>
+          <button id="titlebar-close" class="titlebar-btn titlebar-close">
+            <svg viewBox="0 0 10 10"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" stroke-width="1.2"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Content Area -->
+      <main class="content-area">
+        <div class="video-container">
+          <video controls autoplay>
+            <source src="assets/out_18_w8a8.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </main>
+
+      <!-- HUD Frame Overlay -->
+      <div class="hud-overlay">
+        <img src="assets/frame.svg" alt="" class="hud-frame" />
+      </div>
+
+      <!-- Settings Panel (Right) -->
+      <div id="settings-panel" class="panel panel-right">
+        <div class="panel-header">
+          <span class="panel-title">SETTINGS</span>
+          <button id="settings-close" class="panel-close">
+            <svg viewBox="0 0 10 10"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" stroke-width="1.2"/></svg>
+          </button>
+        </div>
+        <div class="panel-content">
+          <div class="setting-group">
+            <label class="setting-label">Text Prompt</label>
+            <input type="text" class="setting-input" placeholder="Enter a prompt..." />
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">Quality</label>
+            <select class="setting-select">
+              <option>Auto</option>
+              <option>360p</option>
+              <option>480p</option>
+              <option>720p</option>
+            </select>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label">HUD Opacity</label>
+            <input type="range" class="setting-range" min="0" max="100" value="95" />
+          </div>
+          <div class="setting-group setting-row">
+            <label class="setting-label">Show Overlay</label>
+            <input type="checkbox" class="setting-checkbox" checked />
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Toggle Button -->
+      <button id="settings-toggle" class="panel-toggle panel-toggle-right" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </body>
+</html>

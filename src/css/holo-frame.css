@@ -1,0 +1,375 @@
+/* ============================================
+   HOLO-FRAME LAYOUT
+   ============================================ */
+
+.holo-frame {
+  position: relative;
+  width: 800px;
+  height: 100vh;
+  overflow: visible;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.holo-frame::-webkit-scrollbar {
+  display: none;
+}
+
+.holo-frame .content-area {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* ============================================
+   STANDARD VIDEO ANCHOR SPECIFICATION
+   ============================================
+   SVG viewBox: 0 0 800 500
+   Video Region: 640x360 (360p, 16:9 aspect ratio)
+   Video Anchors: (80, 70) to (720, 430)
+   Corner Radius: 16px
+
+   These percentages are standardized for theme compatibility.
+   Theme authors should use the same video anchor coordinates.
+   ============================================ */
+.video-container {
+  position: absolute;
+  left: 10%;      /* 80 / 800 */
+  top: 14%;       /* 70 / 500 */
+  width: 80%;     /* 640 / 800 */
+  height: 72%;    /* 360 / 500 */
+  z-index: 0;
+}
+
+.video-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ============================================
+   HUD OVERLAY
+   ============================================ */
+
+.hud-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none; /* Allow clicks to pass through to video controls */
+}
+
+.hud-frame {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+/* ============================================
+   CUSTOM TITLEBAR
+   Positioned in the SVG's top system band area
+   ============================================ */
+
+.titlebar {
+  position: absolute;
+  top: 0;
+  left: 3.7%;
+  right: 4%;
+  height: 10%;
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0 1rem 0;
+}
+
+.titlebar-drag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+}
+
+.titlebar-title {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: rgba(120, 255, 245, 0.85);
+  text-transform: uppercase;
+  pointer-events: none;
+  margin-top: 0.7rem;
+}
+
+.titlebar-controls {
+  display: flex;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.titlebar-btn {
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(120, 255, 245, 0.3);
+  background: rgba(120, 255, 245, 0.05);
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(120, 255, 245, 0.7);
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.titlebar-btn:hover {
+  background: rgba(120, 255, 245, 0.15);
+  border-color: rgba(120, 255, 245, 0.5);
+  color: rgba(120, 255, 245, 1);
+}
+
+.titlebar-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.titlebar-close:hover {
+  background: rgba(255, 80, 80, 0.3);
+  border-color: rgba(255, 80, 80, 0.6);
+  color: rgba(255, 120, 120, 1);
+}
+
+/* ============================================
+   SLIDE-OUT PANELS
+   ============================================ */
+
+.panel {
+  position: absolute;
+  background: rgba(10, 14, 18, 0.95);
+  border: 1px solid rgba(120, 255, 245, 0.3);
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-right {
+  top: 14%;
+  left: 784px;
+  width: 0;
+  height: 72%;
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  transition: width 0.3s ease, visibility 0s ease 0.3s;
+  visibility: hidden;
+}
+
+.panel-right.open {
+  width: 250px;
+  visibility: visible;
+  transition: width 0.3s ease, visibility 0s ease 0s;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px 14px 30px;
+  border-bottom: 1px solid rgba(120, 255, 245, 0.2);
+}
+
+.panel-title {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: rgba(120, 255, 245, 0.85);
+  text-transform: uppercase;
+}
+
+.panel-close {
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(120, 255, 245, 0.3);
+  background: rgba(120, 255, 245, 0.05);
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(120, 255, 245, 0.7);
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.panel-close:hover {
+  background: rgba(255, 80, 80, 0.3);
+  border-color: rgba(255, 80, 80, 0.6);
+  color: rgba(255, 120, 120, 1);
+}
+
+.panel-close svg {
+  width: 10px;
+  height: 10px;
+}
+
+.panel-content {
+  flex: 1;
+  padding: 14px 14px 14px 30px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.panel-content::-webkit-scrollbar {
+  display: none;
+}
+
+/* Settings controls */
+.setting-group {
+  margin-bottom: 16px;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setting-label {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: rgba(120, 255, 245, 0.7);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.setting-row .setting-label {
+  margin-bottom: 0;
+}
+
+.setting-input,
+.setting-select {
+  width: 100%;
+  padding: 6px 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: rgba(230, 255, 255, 0.9);
+  background: rgba(120, 255, 245, 0.05);
+  border: 1px solid rgba(120, 255, 245, 0.25);
+  border-radius: 3px;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.setting-input:focus,
+.setting-select:focus {
+  border-color: rgba(120, 255, 245, 0.5);
+  background: rgba(120, 255, 245, 0.1);
+}
+
+.setting-input::placeholder {
+  color: rgba(120, 255, 245, 0.35);
+}
+
+.setting-select option {
+  background: rgba(10, 14, 18, 0.98);
+  color: rgba(230, 255, 255, 0.9);
+}
+
+.setting-range {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(120, 255, 245, 0.2);
+  border-radius: 2px;
+  outline: none;
+}
+
+.setting-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: rgba(120, 255, 245, 0.8);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.setting-range::-webkit-slider-thumb:hover {
+  background: rgba(120, 255, 245, 1);
+  transform: scale(1.2);
+}
+
+.setting-checkbox {
+  width: 16px;
+  height: 16px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(120, 255, 245, 0.05);
+  border: 1px solid rgba(120, 255, 245, 0.3);
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.setting-checkbox:checked {
+  background: rgba(120, 255, 245, 0.3);
+  border-color: rgba(120, 255, 245, 0.6);
+}
+
+.setting-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid rgba(120, 255, 245, 1);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Panel toggle button */
+.panel-toggle {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(120, 255, 245, 0.3);
+  background: rgba(10, 14, 18, 0.9);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(120, 255, 245, 0.7);
+  transition: all 0.15s ease;
+  padding: 0;
+  z-index: 25;
+}
+
+.panel-toggle:hover {
+  background: rgba(120, 255, 245, 0.15);
+  border-color: rgba(120, 255, 245, 0.5);
+  color: rgba(120, 255, 245, 1);
+}
+
+.panel-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.panel-toggle-right {
+  left: 756px;
+  top: 50%;
+  transform: translateY(-50%);
+}
