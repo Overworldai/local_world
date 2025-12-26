@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="css/styles.css" />
     <link rel="stylesheet" href="css/holo-frame.css" />
+    <link rel="stylesheet" href="css/video-mask.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>world-client</title>
     <script type="module" src="/main.js" defer></script>
@@ -19,9 +20,6 @@
           <button id="titlebar-minimize" class="titlebar-btn">
             <svg viewBox="0 0 10 10"><path d="M2 5h6" stroke="currentColor" stroke-width="1.2"/></svg>
           </button>
-          <button id="titlebar-maximize" class="titlebar-btn">
-            <svg viewBox="0 0 10 10"><rect x="2" y="2" width="6" height="6" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
-          </button>
           <button id="titlebar-close" class="titlebar-btn titlebar-close">
             <svg viewBox="0 0 10 10"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" stroke-width="1.2"/></svg>
           </button>
@@ -31,16 +29,78 @@
       <!-- Main Content Area -->
       <main class="content-area">
         <div class="video-container">
-          <video controls autoplay>
+          <!-- Portal state backgrounds -->
+          <div class="portal-background portal-background-cold"></div>
+          <div class="portal-background portal-background-warm">
+            <!-- Tunnel rings - expand outward from center -->
+            <div class="tunnel-rings">
+              <div class="tunnel-ring"></div>
+              <div class="tunnel-ring"></div>
+              <div class="tunnel-ring"></div>
+              <div class="tunnel-ring"></div>
+              <div class="tunnel-ring"></div>
+              <div class="tunnel-ring"></div>
+            </div>
+            <div class="warp-center"></div>
+            <!-- FAR layer - dim, slow, distant stars -->
+            <div class="streak streak-far streak-1"></div>
+            <div class="streak streak-far streak-2"></div>
+            <div class="streak streak-far streak-3"></div>
+            <div class="streak streak-far streak-4"></div>
+            <div class="streak streak-far streak-5"></div>
+            <div class="streak streak-far streak-6"></div>
+            <div class="streak streak-far streak-7"></div>
+            <div class="streak streak-far streak-8"></div>
+            <div class="streak streak-far streak-9"></div>
+            <div class="streak streak-far streak-10"></div>
+            <div class="streak streak-far streak-11"></div>
+            <div class="streak streak-far streak-12"></div>
+            <!-- MID layer - medium distance -->
+            <div class="streak streak-mid streak-13"></div>
+            <div class="streak streak-mid streak-14"></div>
+            <div class="streak streak-mid streak-15"></div>
+            <div class="streak streak-mid streak-16"></div>
+            <div class="streak streak-mid streak-17"></div>
+            <div class="streak streak-mid streak-18"></div>
+            <div class="streak streak-mid streak-19"></div>
+            <div class="streak streak-mid streak-20"></div>
+            <div class="streak streak-mid streak-21"></div>
+            <div class="streak streak-mid streak-22"></div>
+            <!-- NEAR layer - bright, fast, close stars -->
+            <div class="streak streak-near streak-23"></div>
+            <div class="streak streak-near streak-24"></div>
+            <div class="streak streak-near streak-25"></div>
+            <div class="streak streak-near streak-26"></div>
+            <div class="streak streak-near streak-27"></div>
+            <div class="streak streak-near streak-28"></div>
+            <div class="streak streak-near streak-29"></div>
+            <div class="streak streak-near streak-30"></div>
+          </div>
+          <div class="portal-background portal-background-hot"></div>
+
+          <!-- Video feed (shown when connected) -->
+          <video autoplay muted loop playsinline disablePictureInPicture>
             <source src="assets/out_18_w8a8.mp4" type="video/mp4" />
             Your browser does not support the video tag.
           </video>
+
+          <!-- Terminal Status Display (inside container to be masked) -->
+          <div class="terminal-status" id="terminal-status">
+            <span class="terminal-prompt">&gt;</span>
+            <span class="terminal-text" id="terminal-text">INITIALIZING WORLD CLIENT...</span>
+            <span class="terminal-cursor"></span>
+          </div>
+
+          <div class="video-mask"></div>
         </div>
+
+        <!-- Logo container (for future use) -->
+        <div class="logo-container" id="logo-container"></div>
       </main>
 
       <!-- HUD Frame Overlay -->
       <div class="hud-overlay">
-        <img src="assets/frame.svg" alt="" class="hud-frame" />
+        <img src="assets/holo-frame.svg" alt="" class="hud-frame" />
       </div>
 
       <!-- Settings Panel (Right) -->
@@ -76,13 +136,38 @@
         </div>
       </div>
 
-      <!-- Settings Toggle Button -->
-      <button id="settings-toggle" class="panel-toggle panel-toggle-right" title="Settings">
+      <!-- Keyboard Panel (Bottom) -->
+      <div id="keyboard-panel" class="panel panel-bottom">
+        <div class="panel-header">
+          <span class="panel-title">KEYBOARD INPUT</span>
+        </div>
+        <div class="panel-content">
+          <span class="keyboard-placeholder">Keyboard visualizer placeholder</span>
+        </div>
+      </div>
+
+      <!-- Play Button -->
+      <button id="play-btn" class="play-btn" title="Play">
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+      </button>
+
+      <!-- Right Side Toggle Buttons -->
+      <button id="keyboard-toggle" class="panel-toggle panel-toggle-right panel-toggle-keyboard" title="Keyboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="6" width="20" height="12" rx="2"/>
+          <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/>
+        </svg>
+      </button>
+
+      <button id="settings-toggle" class="panel-toggle panel-toggle-right panel-toggle-settings" title="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
         </svg>
       </button>
+
     </div>
   </body>
 </html>

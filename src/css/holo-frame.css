@@ -5,7 +5,7 @@
 .holo-frame {
   position: relative;
   width: 800px;
-  height: 100vh;
+  height: 500px; /* Fixed height - keyboard panel slides below */
   overflow: visible;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -13,6 +13,23 @@
 
 .holo-frame::-webkit-scrollbar {
   display: none;
+}
+
+/* ============================================
+   STARTUP ANIMATION
+   Content fades in after HUD draws
+   ============================================ */
+.content-area,
+.titlebar,
+.panel-toggle {
+  opacity: 0;
+  animation: contentFadeIn 0.5s ease-out 1.2s forwards;
+}
+
+@keyframes contentFadeIn {
+  to {
+    opacity: 1;
+  }
 }
 
 .holo-frame .content-area {
@@ -40,12 +57,17 @@
   width: 80%;     /* 640 / 800 */
   height: 72%;    /* 360 / 500 */
   z-index: 0;
+  overflow: hidden;
+  background: #020617;
 }
 
 .video-container video {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* ============================================
@@ -75,7 +97,7 @@
 
 .titlebar {
   position: absolute;
-  top: 0;
+  top: 0.5%;
   left: 3.7%;
   right: 4%;
   height: 10%;
@@ -173,6 +195,44 @@
   width: 250px;
   visibility: visible;
   transition: width 0.3s ease, visibility 0s ease 0s;
+}
+
+.panel-bottom {
+  left: 10%;
+  top: 470px;
+  width: 80%;
+  height: 0;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  transition: height 0.3s ease, visibility 0s ease 0.3s;
+  visibility: hidden;
+}
+
+.panel-bottom.open {
+  height: 150px;
+  visibility: visible;
+  transition: height 0.3s ease, visibility 0s ease 0s;
+}
+
+.panel-bottom .panel-header {
+  padding: 8px 14px;
+  padding-top: 10px;
+  padding-left: 117px;  /* Offset "keyboard input" title to position @ cutout portion of the svg background */
+}
+
+.panel-bottom .panel-content {
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.keyboard-placeholder {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: rgba(120, 255, 245, 0.5);
+  text-transform: uppercase;
 }
 
 .panel-header {
@@ -370,6 +430,138 @@
 
 .panel-toggle-right {
   left: 756px;
-  top: 50%;
-  transform: translateY(-50%);
+}
+
+.panel-toggle-keyboard {
+  top: 47%;
+}
+
+.panel-toggle-settings {
+  top: 54%;
+}
+
+/* ============================================
+   PLAY BUTTON
+   Aligned with settings toggle on the right
+   ============================================ */
+
+.play-btn {
+  position: absolute;
+  left: 756px;
+  top: 40%;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(120, 255, 245, 0.3);
+  background: rgba(10, 14, 18, 0.9);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(120, 255, 245, 0.7);
+  transition: all 0.15s ease;
+  padding: 0;
+  z-index: 25;
+  opacity: 0;
+  animation: contentFadeIn 0.5s ease-out 1.2s forwards;
+}
+
+.play-btn:hover {
+  background: rgba(120, 255, 245, 0.15);
+  border-color: rgba(120, 255, 245, 0.5);
+  color: rgba(120, 255, 245, 1);
+}
+
+.play-btn svg {
+  width: 16px;
+  height: 16px;
+  margin-left: 2px; /* Optical centering for play icon */
+}
+
+.play-btn.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* ============================================
+   TERMINAL STATUS DISPLAY
+   ============================================ */
+
+.terminal-status {
+  position: absolute;
+  top: 85%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(120, 255, 245, 0.85);
+  text-transform: uppercase;
+  opacity: 0;
+  animation: contentFadeIn 0.5s ease-out 1.4s forwards;
+}
+
+.terminal-prompt {
+  color: rgba(120, 255, 245, 0.5);
+}
+
+.terminal-text {
+  transition: opacity 0.15s ease;
+}
+
+.terminal-text.typing {
+  opacity: 0.6;
+}
+
+.terminal-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 12px;
+  background: rgba(120, 255, 245, 0.8);
+  animation: cursorBlink 1s step-end infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* State-specific colors */
+.terminal-status.state-cold {
+  color: rgba(120, 255, 245, 0.85);
+}
+
+.terminal-status.state-warm {
+  color: rgba(255, 200, 100, 0.9);
+}
+
+.terminal-status.state-warm .terminal-prompt {
+  color: rgba(255, 200, 100, 0.5);
+}
+
+.terminal-status.state-warm .terminal-cursor {
+  background: rgba(255, 200, 100, 0.8);
+}
+
+.terminal-status.state-hot {
+  color: rgba(100, 255, 150, 0.9);
+}
+
+.terminal-status.state-hot .terminal-prompt {
+  color: rgba(100, 255, 150, 0.5);
+}
+
+.terminal-status.state-hot .terminal-cursor {
+  background: rgba(100, 255, 150, 0.8);
+}
+
+/* Hide terminal when portal is expanded */
+.video-container.connected .terminal-status {
+  opacity: 0 !important;
+  transition: opacity 0.3s ease;
 }

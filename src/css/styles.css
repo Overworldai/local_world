@@ -46,38 +46,6 @@ body::-webkit-scrollbar {
   padding: 2rem;
 }
 
-.logo {
-  height: 5em;
-  padding: 1em;
-  will-change: filter;
-  transition: filter 0.3s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.logo.vanilla:hover {
-  filter: drop-shadow(0 0 2em #ffe21c);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-}
-
-h1 {
-  font-size: 1.8rem;
-  margin-bottom: 1rem;
-  color: #fff;
-}
-
-p {
-  color: rgba(255, 255, 255, 0.5);
-  margin: 0.5rem 0;
-}
-
 a {
   color: #24c8db;
   text-decoration: none;
@@ -114,12 +82,4 @@ button:hover {
   background: rgba(0, 255, 255, 0.2);
   border-color: rgba(0, 255, 255, 0.5);
   box-shadow: 0 0 12px rgba(0, 255, 255, 0.3);
-}
-
-#greet-input {
-  margin-right: 0.5rem;
-}
-
-#greet-form {
-  margin-top: 1rem;
 }

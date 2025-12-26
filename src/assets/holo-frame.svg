@@ -38,6 +38,54 @@
         fill: none;
       }
 
+      /* Draw-in animation classes */
+      .draw-path {
+        stroke-dasharray: 3000;
+        stroke-dashoffset: 3000;
+        animation: drawIn 1.8s ease-out forwards;
+      }
+      .draw-path-delay-1 {
+        stroke-dasharray: 2000;
+        stroke-dashoffset: 2000;
+        animation: drawIn 1.4s ease-out 0.3s forwards;
+      }
+      .draw-path-delay-2 {
+        stroke-dasharray: 1500;
+        stroke-dashoffset: 1500;
+        animation: drawIn 1.2s ease-out 0.5s forwards;
+      }
+      .draw-path-delay-3 {
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+        animation: drawIn 1s ease-out 0.7s forwards;
+      }
+
+      .fade-in {
+        opacity: 0;
+        animation: fadeIn 0.6s ease-out 1s forwards;
+      }
+      .fade-in-delay {
+        opacity: 0;
+        animation: fadeIn 0.5s ease-out 1.3s forwards;
+      }
+
+      .bg-fade {
+        opacity: 0;
+        animation: fadeIn 0.8s ease-out 0.2s forwards;
+      }
+
+      @keyframes drawIn {
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+
+      @keyframes fadeIn {
+        to {
+          opacity: 1;
+        }
+      }
+
       .hud-text {
         fill: rgba(230,255,255,0.92);
         font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -79,7 +127,7 @@
   <!-- ================= TRANSLUCENT BACKGROUND WITH VIDEO CUTOUT ================= -->
   <!-- Outer frame path (clockwise) + Video cutout with curved corners (counter-clockwise) -->
   <!-- Video anchors: (80, 70) to (720, 430), 16px corner radius -->
-  <path class="hud-bg"
+  <path class="hud-bg bg-fade"
         d="M 38 8 L 150 8 L 165 22 L 300 22 L 315 8 L 620 8 L 635 24 L 760 24
            L 786 50 L 786 125 L 800 140 L 800 360 L 784 376 L 784 448 L 758 474
            L 644 474 L 628 490 L 330 490 L 312 476 L 185 476 L 170 490 L 60 490
@@ -90,7 +138,7 @@
   <!-- ================= OUTER WINDOW GEOMETRY ================= -->
   <g filter="url(#glow)">
     <!-- Primary creative perimeter -->
-    <path class="hud"
+    <path class="hud draw-path"
           d="
             M 38 8
             L 150 8
@@ -127,11 +175,9 @@
           "/>
 
     <!-- Secondary echo perimeter -->
-    <path class="hud-ghost"
+    <path class="hud-ghost draw-path-delay-1"
           d="
-            M 50 28
-            L 136 28
-            L 152 42
+            M 152 42
             L 306 42
             L 324 28
             L 608 28
@@ -139,10 +185,7 @@
             L 744 44
             L 764 64
             L 764 116
-            L 782 134
-            L 782 358
-            L 768 374
-            L 768 438
+            M 768 438
             L 746 460
             L 634 460
             L 616 476
@@ -156,43 +199,27 @@
             L 30 376
             L 30 140
             L 42 128
-            L 42 58
-            L 30 44
-            L 30 28
-            L 50 28
-            Z
+            L 42 42
+            L 152 42
           "/>
 
-    <!-- Notch highlights -->
-    <path class="hud-dim"
-          d="
-            M 165 22 L 165 8
-            M 315 8 L 315 22
-            M 635 24 L 635 8
-            M 628 490 L 628 476
-            M 170 490 L 170 476
-            M 16 140 L 30 140
-            M 800 140 L 786 140
-            M 16 366 L 32 366
-            M 784 376 L 800 376
-          "/>
 
 
     <!-- Outer nodes -->
-    <circle cx="27" cy="19" r="3" class="dot"/>
-    <circle cx="764" cy="46" r="3" class="dot"/>
-    <circle cx="76" cy="460" r="3" class="dot-dim"/>
-    <circle cx="764" cy="460" r="3" class="dot-dim"/>
+    <circle cx="27" cy="19" r="3" class="dot fade-in"/>
+    <circle cx="764" cy="46" r="3" class="dot fade-in"/>
+    <circle cx="76" cy="460" r="3" class="dot-dim fade-in-delay"/>
+    <circle cx="764" cy="460" r="3" class="dot-dim fade-in-delay"/>
   </g>
 
   <!-- ================= TOP SYSTEM BAND ================= -->
-  <circle cx="660" cy="56" r="4" class="dot"/>
-  <path class="hud-dim" d="M 80 62 L 720 62"/>
+  <circle cx="660" cy="56" r="4" class="dot fade-in"/>
+  <path class="hud-dim draw-path-delay-2" d="M 80 62 L 720 62"/>
 
   <!-- ================= VIDEO CORNER BRACKETS ================= -->
   <!-- Video anchors: (80, 70) to (720, 430), 16px corner radius -->
   <g filter="url(#glow)">
-    <path class="hud"
+    <path class="hud draw-path-delay-2"
           d="
             M 80 100 L 80 86 Q 80 70 96 70 L 110 70
 
@@ -204,12 +231,12 @@
           "/>
 
     <!-- Side diagnostic rails -->
-    <path class="hud-dim"
+    <path class="hud-dim draw-path-delay-3"
           d="M 66 120 L 66 380
              M 734 120 L 734 380" />
 
     <!-- Rail ticks -->
-    <path class="hud-dim"
+    <path class="hud-dim draw-path-delay-3"
           d="
             M 66 160 L 78 160
             M 66 210 L 74 210
@@ -224,25 +251,17 @@
             M 734 360 L 722 360
           " />
 
-    <!-- Diagonal projection braces -->
-    <path class="hud-dim"
-          d="
-            M 116 110 L 142 84
-            M 684 110 L 658 84
-            M 116 390 L 140 414
-            M 684 390 L 660 414
-          " />
 
     <!-- Tiny nodes at bracket ends -->
-    <circle cx="110" cy="70" r="2.6" class="dot"/>
-    <circle cx="690" cy="70" r="2.2" class="dot-dim"/>
-    <circle cx="110" cy="430" r="2.2" class="dot-dim"/>
-    <circle cx="690" cy="430" r="2.6" class="dot"/>
+    <circle cx="110" cy="70" r="2.6" class="dot fade-in"/>
+    <circle cx="690" cy="70" r="2.2" class="dot-dim fade-in-delay"/>
+    <circle cx="110" cy="430" r="2.2" class="dot-dim fade-in-delay"/>
+    <circle cx="690" cy="430" r="2.6" class="dot fade-in"/>
   </g>
 
   <!-- ================= RIGHT DIAGNOSTIC BLADE ================= -->
   <g filter="url(#glow)">
-    <path class="hud"
+    <path class="hud draw-path-delay-2"
           d="
             M 778 150
             L 792 164
@@ -254,24 +273,15 @@
             L 756 150
             Z
           "/>
-    <circle cx="782" cy="324" r="3" class="dot"/>
+    <circle cx="782" cy="324" r="3" class="dot fade-in"/>
   </g>
 
   <!-- ================= BOTTOM CONTROL BAY ================= -->
-  <path class="hud" filter="url(#glow)" d="M 80 440 L 720 440"/>
+  <path class="hud draw-path-delay-2" filter="url(#glow)" d="M 80 440 L 720 440"/>
 
-  <path class="hud-dim"
-        d="M 220 462 L 220 492
-           M 370 462 L 370 492
-           M 520 462 L 520 492" />
-
-  <circle cx="150" cy="472" r="3" class="dot"/>
-  <circle cx="300" cy="472" r="3" class="dot"/>
-  <circle cx="450" cy="472" r="3" class="dot"/>
-  <circle cx="600" cy="472" r="3" class="dot"/>
-
-  <!-- Subtle scanline above video (optional) -->
-  <rect x="80" y="70" width="640" height="12"
-        fill="url(#scanlineGrad)" opacity="0.45"/>
+  <circle cx="150" cy="456" r="3" class="dot fade-in-delay"/>
+  <circle cx="300" cy="456" r="3" class="dot fade-in-delay"/>
+  <circle cx="450" cy="456" r="3" class="dot fade-in-delay"/>
+  <circle cx="600" cy="456" r="3" class="dot fade-in-delay"/>
 
 </svg>
