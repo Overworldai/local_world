@@ -16,8 +16,20 @@ from world_engine import WorldEngine, CtrlInput, QUANTS
 def fetch_model_uris(collection_uri: str = "OpenWorldLabs/nightly") -> list[str]:
     """Models from collection most recent first."""
     from huggingface_hub import get_collection
+    from huggingface_hub.errors import HfHubHTTPError
 
-    coll = get_collection(collection_uri)
+    try:
+        coll = get_collection(collection_uri)
+    except HfHubHTTPError as e:
+        if getattr(e, "response", None) is not None and e.response.status_code in (401, 403):
+            os.environ.pop("HF_TOKEN", None)
+            os.environ.pop("HUGGINGFACE_HUB_TOKEN", None)
+            from huggingface_hub import logout
+            try:
+                logout()  # clear saved token(s) on disk (if any)
+            except OSError:
+                pass
+        raise
     models = [
         it.item_id
         for it in getattr(coll, "items", [])
@@ -72,6 +84,48 @@ def launch_form(*, title: str = "World Engine") -> tuple[str, str | None] | None
     return (selected["uri"], selected["quant"]) if selected["uri"] else None
 
 
+def seed_form(*, title: str = "Seed") -> str | None:
+    import tkinter as tk
+    from tkinter import ttk, filedialog
+
+    root = tk.Tk()
+    root.title(title)
+    root.resizable(False, False)
+
+    frm = ttk.Frame(root, padding=12)
+    frm.grid(sticky="nsew")
+
+    chosen: dict[str, str | None] = {"path": None}
+    shown = tk.StringVar(value="(default)")
+
+    def pick() -> None:
+        p = filedialog.askopenfilename(
+            title="Select seed image",
+            filetypes=[("Images", "*.png *.jpg *.jpeg *.webp *.bmp"), ("All files", "*.*")],
+        )
+        if p:
+            chosen["path"] = p
+            shown.set(os.path.basename(p))
+
+    ttk.Label(frm, text="Image").grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
+    ttk.Button(frm, text="Choose…", command=pick).grid(row=0, column=1, sticky="w", pady=(0, 8))
+    ttk.Label(frm, textvariable=shown).grid(row=0, column=2, sticky="w", pady=(0, 8))
+
+    ttk.Label(frm, text="Prompt").grid(row=1, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
+    ent = ttk.Entry(frm, width=52)
+    ent.insert(0, "Sample prompt")
+    ent.configure(state="disabled")
+    ent.grid(row=1, column=1, columnspan=2, sticky="ew", pady=(0, 8))
+
+    def ok() -> None:
+        root.destroy()
+
+    ttk.Button(frm, text="Start", command=ok).grid(row=2, column=2, sticky="e")
+    root.protocol("WM_DELETE_WINDOW", ok)
+    root.mainloop()
+    return chosen["path"]
+
+
 @functools.lru_cache
 def load_seed_frame(target_size: tuple[int, int] = (360, 640)) -> torch.Tensor | None:
     """Cached seed frame as (H,W,3) uint8 on GPU"""
@@ -83,7 +137,18 @@ def load_seed_frame(target_size: tuple[int, int] = (360, 640)) -> torch.Tensor |
     return frame.to(dtype=torch.uint8).permute(1, 2, 0).contiguous()  # (H,W,3)
 
 
-async def ctrl_stream(restart_event: asyncio.Event, mouse_sensitivity: float = 1.5,) -> AsyncIterator[CtrlInput]:
+def load_seed_frame_from_file(path: str, target_size: tuple[int, int] = (360, 640)) -> torch.Tensor:
+    img = torchvision.io.read_image(path)  # (C,H,W) uint8
+    img = img[:3].unsqueeze(0).float()  # (1,3,H,W)
+    frame = F.interpolate(img, size=target_size, mode="bilinear", align_corners=False)[0]  # (3,H,W)
+    return frame.to(dtype=torch.uint8).permute(1, 2, 0).contiguous()  # (H,W,3)
+
+
+async def ctrl_stream(
+    restart_event: asyncio.Event,
+    seed_event: asyncio.Event,
+    mouse_sensitivity: float = 1.5,
+) -> AsyncIterator[CtrlInput]:
     codes = (
         {("k", pygame.key.key_code(ch)): ord(ch.upper()) for ch in "wasdr"} |  # optionally "f"
         {("k", pygame.K_SPACE): ord(" ")} |
@@ -102,6 +167,8 @@ async def ctrl_stream(restart_event: asyncio.Event, mouse_sensitivity: float = 1
                     return
                 if e.key == pygame.K_u:
                     restart_event.set()
+                if e.key == pygame.K_DELETE:
+                    seed_event.set()
                 if (c := codes.get(("k", e.key))) is not None:
                     btn.add(c)
             elif e.type == pygame.MOUSEBUTTONDOWN:
@@ -129,18 +196,31 @@ async def run_loop(
     pygame.init()
     screen = pygame.display.set_mode((1920, 1080), pygame.RESIZABLE)
     pygame.event.set_grab(True)
-    pygame.mouse.set_visible(False)
-    pygame.mouse.get_rel()
-    pygame.display.set_caption("U=restart, ESC=menu")
+    pygame.display.set_caption("U=restart, DEL=seed, ESC=menu")
 
     restart = asyncio.Event()
-    ctrls = ctrl_stream(restart_event=restart, mouse_sensitivity=mouse_sensitivity)
+    seed_req = asyncio.Event()
+    ctrls = ctrl_stream(restart_event=restart, seed_event=seed_req, mouse_sensitivity=mouse_sensitivity)
     limit = max(1, n_frames - 2)
+
+    async def select_seed() -> None:
+        nonlocal seed
+        pygame.event.set_grab(False)
+        pygame.mouse.set_visible(True)
+        pygame.mouse.get_rel()
+        path = seed_form()
+        if path:
+            seed = await asyncio.to_thread(load_seed_frame_from_file, path)
+        else:
+            seed = await asyncio.to_thread(load_seed_frame)
+        pygame.event.set_grab(True)
+        pygame.mouse.set_visible(False)
+        pygame.mouse.get_rel()
 
     async def reset() -> None:
         await asyncio.to_thread(engine.reset)
-        if seed is not None:
-            await asyncio.to_thread(engine.append_frame, seed)
+        await select_seed()
+        await reset()
 
     def draw(img: torch.Tensor) -> None:
         img = img.detach()
@@ -159,6 +239,12 @@ async def run_loop(
 
         frames = 0
         async for ctrl in ctrls:
+            if seed_req.is_set():
+                seed_req.clear()
+                await select_seed()
+                await reset()
+                frames = 0
+                continue
             if restart.is_set() or frames >= limit:
                 restart.clear()
                 await reset()
@@ -181,29 +267,36 @@ async def main(
     device: str = "cuda",
     quant: str | None = None,
 ) -> None:
-    seed = await asyncio.to_thread(load_seed_frame)
+    seed = None
 
     engine = WorldEngine(
         model_uri,
         device=device,
-        model_config_overrides={"n_frames": n_frames},
-        apply_patches=True,
+        model_config_overrides={
+            "n_frames": n_frames,
+            "ae_uri": "OpenWorldLabs/owl_vae_f16_c16_distill_v0_nogan"
+        },
         quant=quant,
     )
     await run_loop(engine=engine, seed=seed, n_frames=n_frames)
 
 
 def ensure_hf_token() -> None:
-    if os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN"):
+    t = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN")
+    if t:
         return
+    from huggingface_hub import get_token, login
+    t = get_token()
     import tkinter as tk
     from tkinter import simpledialog
-    r = tk.Tk()
-    r.withdraw()
-    t = simpledialog.askstring("HF token", "Enter Hugging Face token:", show="*")
-    r.destroy()
+    if not t:
+        r = tk.Tk()
+        r.withdraw()
+        t = simpledialog.askstring("HF token", "Enter Hugging Face token:", show="*")
+        r.destroy()
     if not t:
         raise SystemExit("No Hugging Face token provided.")
+    login(token=t, add_to_git_credential=False)
     os.environ["HF_TOKEN"] = os.environ["HUGGINGFACE_HUB_TOKEN"] = t
 
 
