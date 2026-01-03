@@ -13,13 +13,16 @@ import torchvision
 from world_engine import WorldEngine, CtrlInput, QUANTS
 
 
-def fetch_model_uris(collection_uri: str = "OpenWorldLabs/nightly") -> list[str]:
-    """Models from collection most recent first."""
-    from huggingface_hub import get_collection
+def fetch_model_uris(org_uri: str = "OverWorld-Beta") -> list[str]:
+    """Models from an author/org on the Hub, most recent first."""
+    from huggingface_hub import HfApi
     from huggingface_hub.errors import HfHubHTTPError
 
     try:
-        coll = get_collection(collection_uri)
+        # Treat the old `collection_uri` default as an author/org name.
+        # e.g. "OverWorld-Beta" (org) or "OpenWorldLabs" (user/org)
+        api = HfApi()
+        models = [m.modelId for m in api.list_models(author=org_uri, sort="lastModified", direction=-1)]
     except HfHubHTTPError as e:
         if getattr(e, "response", None) is not None and e.response.status_code in (401, 403):
             os.environ.pop("HF_TOKEN", None)
@@ -30,57 +33,93 @@ def fetch_model_uris(collection_uri: str = "OpenWorldLabs/nightly") -> list[str]
             except OSError:
                 pass
         raise
-    models = [
-        it.item_id
-        for it in getattr(coll, "items", [])
-        if getattr(it, "item_type", None) == "model"
-    ]
     if not models:
-        raise RuntimeError(f"No models found in Hugging Face collection {collection_uri}")
-    return list(reversed(models))
+        raise RuntimeError(f"No models found for Hugging Face author/org {org_uri}")
+    return models
 
 
 def launch_form(*, title: str = "World Engine") -> tuple[str, str | None] | None:
     import tkinter as tk
-    from tkinter import ttk
+    from tkinter import ttk, messagebox
 
-    models = fetch_model_uris()  # must come from collection; raises if unavailable
-    qvals = list(map(str, QUANTS))
+    try:
+        models = fetch_model_uris()
+    except Exception as e:
+        messagebox.showerror(title, f"Failed to load models:\n{e}")
+        return None
+
+    qvals = list(map(str, QUANTS))  # keep your existing semantics
 
     root = tk.Tk()
     root.title(title)
     root.resizable(False, False)
 
+    # Modal-ish behavior + nicer focus
+    root.lift()
+    root.focus_force()
+
+    pad = {"padx": 10, "pady": 6}
     frm = ttk.Frame(root, padding=12)
     frm.grid(sticky="nsew")
     frm.columnconfigure(1, weight=1)
 
-    ttk.Label(frm, text="Model").grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
-
-    var = tk.StringVar(value=models[0])
-    cmb = ttk.Combobox(frm, textvariable=var, values=models, state="readonly", width=52)
-    cmb.configure(state="normal")
-    cmb.grid(row=0, column=1, sticky="ew", pady=(0, 8))
-    cmb.bind("<Return>", lambda _e: run())  # Enter to Run
-    cmb.focus_set()
-
     selected: dict[str, str | None] = {"uri": None, "quant": None}
 
-    ttk.Label(frm, text="Quantization:").grid(row=1, column=0, sticky="w", padx=(0, 8), pady=(0, 8))
+    var = tk.StringVar(value="select model")
+    cvar = tk.StringVar(value="")
     qvar = tk.StringVar(value=qvals[0])
-    qcmb = ttk.Combobox(frm, textvariable=qvar, values=qvals, state="readonly", width=52)
-    qcmb.grid(row=1, column=1, sticky="ew", pady=(0, 8))
-    qcmb.bind("<Return>", lambda _e: run())  # Enter to Run
 
-    def run() -> None:
-        selected["uri"] = var.get()
-        q = qvar.get()
-        selected["quant"] = None if q == qvals[0] else q
+    ttk.Label(frm, text="Model").grid(row=0, column=0, sticky="w", **pad)
+    cmb = ttk.Combobox(frm, textvariable=var, values=["select model", "custom model", *models], state="readonly", width=60)
+    cmb.grid(row=0, column=1, sticky="ew", **pad)
+
+    clbl = ttk.Label(frm, text="Custom model")
+    cent = ttk.Entry(frm, textvariable=cvar, width=60)
+    clbl.grid(row=1, column=0, sticky="w", **pad)
+    cent.grid(row=1, column=1, sticky="ew", **pad)
+    clbl.grid_remove(); cent.grid_remove()
+
+    def _on_model(_e=None) -> None:
+        show = var.get() == "custom model"
+        (clbl.grid if show else clbl.grid_remove)()
+        (cent.grid if show else cent.grid_remove)()
+        if show:
+            cent.focus_set()
+
+    cmb.bind("<<ComboboxSelected>>", _on_model)
+
+    ttk.Label(frm, text="Quantization").grid(row=2, column=0, sticky="w", **pad)
+    qcmb = ttk.Combobox(frm, textvariable=qvar, values=qvals, state="readonly", width=60)
+    qcmb.grid(row=2, column=1, sticky="ew", **pad)
+
+    ttk.Separator(frm).grid(row=3, column=0, columnspan=2, sticky="ew", pady=(10, 8))
+
+    def close(*, cancel: bool) -> None:
+        if not cancel:
+            v = var.get()
+            uri = cvar.get().strip() if v == "custom model" else v
+            if uri in ("", "select model"):
+                messagebox.showwarning(title, "Please select a model.")
+                return
+            selected["uri"] = uri
+            q = qvar.get()
+            selected["quant"] = None if q == qvals[0] else q
         root.destroy()
 
-    ttk.Button(frm, text="Run", command=run).grid(row=2, column=1, sticky="e")
+    btns = ttk.Frame(frm)
+    btns.grid(row=4, column=0, columnspan=2, sticky="e")
+    ttk.Button(btns, text="Cancel", command=lambda: close(cancel=True)).grid(row=0, column=0, padx=(0, 8))
+    ttk.Button(btns, text="Run", command=lambda: close(cancel=False)).grid(row=0, column=1)
 
-    root.mainloop()
+    root.protocol("WM_DELETE_WINDOW", lambda: close(cancel=True))
+    root.bind("<Escape>", lambda _e: close(cancel=True))
+    root.bind("<Return>", lambda _e: close(cancel=False))
+
+    # make it behave like a dialog
+    root.grab_set()
+    cmb.focus_set()
+    root.wait_window()
+
     return (selected["uri"], selected["quant"]) if selected["uri"] else None
 
 
@@ -158,10 +197,12 @@ def load_seed_frame(target_size: tuple[int, int] = (360, 640)) -> torch.Tensor:
 
 
 def load_seed_frame_from_file(path: str, target_size: tuple[int, int] = (360, 640)) -> torch.Tensor:
-    img = torchvision.io.read_image(path)  # (C,H,W) uint8
-    img = img[:3].unsqueeze(0).float()  # (1,3,H,W)
-    frame = F.interpolate(img, size=target_size, mode="bilinear", align_corners=False)[0]  # (3,H,W)
-    return frame.to(dtype=torch.uint8).permute(1, 2, 0).contiguous()  # (H,W,3)
+    from torchvision.io import read_file, decode_image, ImageReadMode
+    data = read_file(path)  # bytes -> uint8 1D tensor
+    img = decode_image(data, mode=ImageReadMode.RGB)  # (3,H,W) uint8 (includes WEBP if supported)
+    img = img.unsqueeze(0).float()  # (1,3,H,W)
+    frame = F.interpolate(img, size=target_size, mode="bilinear", align_corners=False)[0]
+    return frame.to(dtype=torch.uint8).permute(1, 2, 0).contiguous()
 
 
 async def ctrl_stream(
