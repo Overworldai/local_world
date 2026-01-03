@@ -226,6 +226,7 @@ WHITELIST_KEYS = frozenset(PYGAME_TO_VK.values()) | frozenset({0x01, 0x02, 0x04}
 async def ctrl_stream(
     restart_event: asyncio.Event,
     seed_event: asyncio.Event,
+    seed_select_event: asyncio.Event,
     mouse_sensitivity: float = 1.5,
     whitelisted_keys=None,
 ) -> AsyncIterator[CtrlInput]:
@@ -248,6 +249,8 @@ async def ctrl_stream(
                     return
                 if e.key == pygame.K_u:
                     restart_event.set()
+                if e.key == pygame.K_INSERT:
+                    seed_select_event.set()
                 if e.key == pygame.K_DELETE:
                     seed_event.set()
                 if (c := codes.get(("k", e.key))) is not None:
@@ -283,18 +286,27 @@ async def run_loop(
     pygame.init()
     screen = pygame.display.set_mode((1920, 1080), pygame.RESIZABLE)
     pygame.event.set_grab(True)
-    pygame.display.set_caption("U=restart, DEL=seed, ESC=menu")
+    pygame.display.set_caption("U=restart, DEL=random seed, INSERT=select seed, ESC=menu")
 
     restart = asyncio.Event()
     seed_req = asyncio.Event()
-    ctrls = ctrl_stream(restart_event=restart, seed_event=seed_req, mouse_sensitivity=mouse_sensitivity)
+    seed_select = asyncio.Event()
+    ctrls = ctrl_stream(
+        restart_event=restart,
+        seed_event=seed_req,
+        seed_select_event=seed_select,
+        mouse_sensitivity=mouse_sensitivity
+    )
     limit = max(1, n_frames - 2)
 
-    async def reset(*, reload_seed: bool = False) -> None:
+    async def reset(*, reload_seed: bool = False, seed_path: str | None = None) -> None:
         nonlocal seed
         await asyncio.to_thread(engine.reset)
         if reload_seed or seed is None:
-            seed = await asyncio.to_thread(load_seed_frame)
+            if seed_path:
+                seed = await asyncio.to_thread(load_seed_frame_from_file, seed_path)
+            else:
+                seed = await asyncio.to_thread(load_seed_frame)
         if seed is not None:
             await asyncio.to_thread(engine.append_frame, seed)
 
@@ -314,6 +326,17 @@ async def run_loop(
 
         frames = 0
         async for ctrl in ctrls:
+            if seed_select.is_set():
+                seed_select.clear()
+                pygame.event.set_grab(False)
+                try:
+                    path = await asyncio.to_thread(seed_form, title="Select seed")
+                finally:
+                    pygame.event.set_grab(True)
+                if path:
+                    await reset(reload_seed=True, seed_path=path)
+                    frames = 0
+                continue
             if seed_req.is_set():
                 seed_req.clear()
                 await reset(reload_seed=True)
