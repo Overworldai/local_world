@@ -257,7 +257,10 @@ async def ctrl_stream(
                     btn.add(c)
 
         pressed = pygame.key.get_pressed()
-        btn.update(c for (kind, raw), c in codes.items() if kind == "k" and pressed[raw])
+        btn.update(
+            c for (kind, raw), c in codes.items()
+            if kind == "k" and pressed[pygame.key.get_scancode_from_key(raw)]
+        )
 
         mb = pygame.mouse.get_pressed(3)
         btn.update(
