@@ -22,10 +22,10 @@ pygame = "*"
 huggingface_hub = { version = "*", extras = ["hf_xet"] }
 
 [target.win-64.pypi-dependencies]
-triton-windows = ">=3.5"
+triton-windows = "==3.5.1.post23"
 
 [target.linux-64.pypi-dependencies]
-triton = ">=3.5"
+triton = "==3.5.1"
 
 [tasks]
 client = "python src/client.py"
