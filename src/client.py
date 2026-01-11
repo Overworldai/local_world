@@ -4,6 +4,8 @@ import asyncio
 import functools
 import os
 import urllib.request
+import sys
+import traceback
 
 import pygame
 import torch
@@ -455,11 +457,38 @@ def ensure_hf_token() -> None:
     os.environ["HF_TOKEN"] = os.environ["HUGGINGFACE_HUB_TOKEN"] = t
 
 
+def _crash_popup(tb: str) -> None:
+    try:
+        import tkinter as tk
+        from tkinter.scrolledtext import ScrolledText
+    except Exception:
+        return  # no GUI available
+    root = tk.Tk()
+    root.title("Crash")
+    root.geometry("900x600")
+    txt = ScrolledText(root, wrap="word")
+    txt.pack(fill="both", expand=True)
+    txt.insert("1.0", tb)
+    txt.configure(state="disabled")
+    def copy() -> None:
+        root.clipboard_clear()
+        root.clipboard_append(tb)
+    tk.Button(root, text="Copy", command=copy).pack(side="right", padx=6, pady=6)
+    tk.Button(root, text="Close", command=root.destroy).pack(side="right", pady=6)
+    root.mainloop()
+
+
 if __name__ == "__main__":
-    ensure_hf_token()
-    while True:
-        sel = launch_form()
-        if not sel:
-            break
-        uri, quant = sel
-        asyncio.run(main(model_uri=uri, quant=quant))
+    try:
+        ensure_hf_token()
+        while True:
+            sel = launch_form()
+            if not sel:
+                break
+            uri, quant = sel
+            asyncio.run(main(model_uri=uri, quant=quant))
+    except Exception:
+        tb = traceback.format_exc()
+        print(tb, file=sys.stderr)
+        _crash_popup(tb)
+        raise
